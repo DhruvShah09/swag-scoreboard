@@ -1,7 +1,7 @@
+// app/api/score/route.js
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 
-// GET /api/score => Fetch all score changes from DB
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -19,23 +19,26 @@ export async function GET() {
   }
 }
 
-// POST /api/score => Insert a new score change
 export async function POST(request) {
   try {
     const { player, change, reason } = await request.json();
 
-    // Basic validation
-    if (!player || ![1, -1].includes(change) || !reason.trim()) {
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
-      );
+    // Make sure player is either "A" or "B", change is a number, and reason is non-empty:
+    if (!player || !["A", "B"].includes(player)) {
+      return NextResponse.json({ error: "Invalid 'player'." }, { status: 400 });
+    }
+    if (typeof change !== "number" || Number.isNaN(change) || change === 0) {
+      return NextResponse.json({ error: "Invalid 'change' amount." }, { status: 400 });
+    }
+    if (!reason || !reason.trim()) {
+      return NextResponse.json({ error: "Reason is required." }, { status: 400 });
     }
 
+    // Insert into DB
     const { data, error } = await supabase
       .from("score_changes")
       .insert([{ player, change, reason }])
-      .select(); // We can return newly created row(s) with .select()
+      .select(); // Return the newly inserted row(s)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
